@@ -630,7 +630,7 @@ namespace hex {
             }
 
             runtime.addDefine("__IMHEX__");
-            runtime.addDefine("__IMHEX_VERSION__", ImHexApi::System::getImHexVersion());
+            runtime.addDefine("__IMHEX_VERSION__", ImHexApi::System::getImHexVersion().get());
         }
 
         void addPragma(const std::string &name, const pl::api::PragmaHandler &handler) {
@@ -1385,6 +1385,25 @@ namespace hex {
 
             void addInformationSectionCreator(const CreateCallback &callback) {
                 s_informationSectionConstructors->emplace_back(callback);
+            }
+
+        }
+
+    }
+
+    namespace ContentRegistry::Disassembler {
+
+        namespace impl {
+
+            static AutoReset<std::map<std::string, impl::CreatorFunction>> s_architectures;
+
+            void addArchitectureCreator(impl::CreatorFunction function) {
+                const auto arch = function();
+                (*s_architectures)[arch->getName()] = std::move(function);
+            }
+
+            const std::map<std::string, impl::CreatorFunction>& getArchitectures() {
+                return *s_architectures;
             }
 
         }
