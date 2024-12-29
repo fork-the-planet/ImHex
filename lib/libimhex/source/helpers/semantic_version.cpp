@@ -39,18 +39,38 @@ namespace hex {
     }
 
     u32 SemanticVersion::major() const {
-        return std::stoul(m_parts[0]);
+        if (!isValid()) return 0;
+
+        try {
+            return std::stoul(m_parts[0]);
+        } catch (...) {
+            return 0;
+        }
     }
 
     u32 SemanticVersion::minor() const {
-        return std::stoul(m_parts[1]);
+        if (!isValid()) return 0;
+
+        try {
+            return std::stoul(m_parts[1]);
+        } catch (...) {
+            return 0;
+        }
     }
 
     u32 SemanticVersion::patch() const {
-        return std::stoul(m_parts[2]);
+        if (!isValid()) return 0;
+
+        try {
+            return std::stoul(m_parts[2]);
+        } catch (...) {
+            return 0;
+        }
     }
 
     bool SemanticVersion::nightly() const {
+        if (!isValid()) return false;
+
         return m_parts.size() == 4 && m_parts[3] == "WIP";
     }
 
@@ -84,6 +104,8 @@ namespace hex {
     }
 
     std::string SemanticVersion::get(bool withBuildType) const {
+        if (!isValid()) return "";
+
         auto result = wolv::util::combineStrings(m_parts, ".");
 
         if (withBuildType && !m_buildType.empty())
