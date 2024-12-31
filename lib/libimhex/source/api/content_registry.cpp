@@ -107,6 +107,8 @@ namespace hex {
                     if (!s_settings.isValid())
                         return;
 
+                    const auto &settingsData = *s_settings;
+
                     // During a crash settings can be empty, causing them to be overwritten.
                     if (settingsData.empty()) {
                         return;
@@ -756,6 +758,14 @@ namespace hex {
             log::debug("Registered new data inspector format: {}", unlocalizedName.get());
 
             impl::s_entries->push_back({ unlocalizedName, requiredSize, maxSize, std::move(displayGeneratorFunction), std::move(editingFunction) });
+        }
+
+        void drawMenuItems(const std::function<void()> &function) {
+            if (ImGui::BeginPopup("##DataInspectorRowContextMenu")) {
+                function();
+                ImGui::Separator();
+                ImGui::EndPopup();
+            }
         }
 
     }
