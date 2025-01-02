@@ -26,6 +26,7 @@ namespace hex::plugin::builtin {
         u32 s_searchBarPosition = 0;
         ImGuiExt::Texture s_logoTexture;
         bool s_showSearchBar = true;
+        bool s_displayShortcutHighlights = true;
 
         void createNestedMenu(std::span<const UnlocalizedString> menuItems, const char *icon, const Shortcut &shortcut, const ContentRegistry::Interface::impl::MenuCallback &callback, const ContentRegistry::Interface::impl::EnabledCallback &enabledCallback, const ContentRegistry::Interface::impl::SelectedCallback &selectedCallback) {
             const auto &name = menuItems.front();
@@ -287,7 +288,16 @@ namespace hex::plugin::builtin {
             if (ImGui::BeginMenu(Lang(menuName))) {
                 populateMenu(menuName);
                 ImGui::EndMenu();
+            } else {
+                if (s_displayShortcutHighlights) {
+                    if (const auto lastShortcutMenu = ShortcutManager::getLastActivatedMenu(); lastShortcutMenu.has_value()) {
+                        if (menuName == *lastShortcutMenu) {
+                            ImGui::NavHighlightActivated(ImGui::GetItemID());
+                        }
+                    }
+                }
             }
+
         }
 
         void drawMenu() {
@@ -406,10 +416,19 @@ namespace hex::plugin::builtin {
                         const auto menuUnderlaySize = ImVec2(windowSize.x, ImGui::GetCurrentWindowRead()->MenuBarHeight);
                         
                         ImGui::SetCursorPos(ImVec2());
-                        
-                        // Drawing this button late allows widgets rendered before it to grab click events, forming an "input underlay"
-                        if (ImGui::InvisibleButton("##mainMenuUnderlay", menuUnderlaySize, ImGuiButtonFlags_PressedOnDoubleClick)) {
-                            macosHandleTitlebarDoubleClickGesture(window);
+
+                        // Prevent window from being moved unless title bar is hovered
+
+                        if (!ImGui::IsAnyItemHovered()) {
+                            const auto cursorPos = ImGui::GetCursorScreenPos();
+                            if (ImGui::IsMouseHoveringRect(cursorPos, cursorPos + menuUnderlaySize) && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
+                                macosHandleTitlebarDoubleClickGesture(window);
+                            }
+
+                            macosSetWindowMovable(window, true);
+                        } else {
+                            macosSetWindowMovable(window, false);
+
                         }
                     }
                 #endif
@@ -587,6 +606,10 @@ namespace hex::plugin::builtin {
 
         ContentRegistry::Settings::onChange("hex.builtin.setting.interface", "hex.builtin.setting.interface.show_header_command_palette", [](const ContentRegistry::Settings::SettingsValue &value) {
             s_showSearchBar = value.get<bool>(true);
+        });
+
+        ContentRegistry::Settings::onChange("hex.builtin.setting.interface", "hex.builtin.setting.interface.display_shortcut_highlights", [](const ContentRegistry::Settings::SettingsValue &value) {
+            s_displayShortcutHighlights = value.get<bool>(true);
         });
     }
 
