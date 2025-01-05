@@ -32,6 +32,7 @@
 #include <wolv/utils/lock.hpp>
 
 #include <content/global_actions.hpp>
+#include <ui/menu_items.hpp>
 
 namespace hex::plugin::builtin {
 
@@ -1573,13 +1574,13 @@ namespace hex::plugin::builtin {
                         if (end == std::string::npos)
                             return std::nullopt;
                         value.resize(end);
-                        //value = value.substr(0, end);
+
                         value = wolv::util::trim(value);
 
                         return BinaryPattern(value);
                     }();
 
-                    const auto address = [value = value] mutable -> std::optional<u64> {
+                    const auto address = [value = value, provider] mutable -> std::optional<u64> {
                         value = wolv::util::trim(value);
 
                         if (value.empty())
@@ -1593,11 +1594,20 @@ namespace hex::plugin::builtin {
                         value = wolv::util::trim(value);
 
                         size_t end = 0;
-                        auto result = std::stoull(value, &end, 0);
+                        auto result = std::stoll(value, &end, 0);
                         if (end != value.length())
                             return std::nullopt;
 
-                        return result;
+                        if (result < 0) {
+                            const auto size = provider->getActualSize();
+                            if (u64(-result) > size) {
+                                return std::nullopt;
+                            }
+
+                            return size + result;
+                        } else {
+                            return result;
+                        }
                     }();
 
                     if (!address)
@@ -2065,12 +2075,12 @@ namespace hex::plugin::builtin {
             return;
 
         if (menus.size() == 1) {
-            if (ImGui::MenuItem(menus.front().c_str()))
+            if (menu::menuItem(menus.front().c_str()))
                 function();
         } else {
-            if (ImGui::BeginMenu(menus.front().c_str())) {
+            if (menu::beginMenu(menus.front().c_str())) {
                 createNestedMenu({ menus.begin() + 1, menus.end() }, function);
-                ImGui::EndMenu();
+                menu::endMenu();
             }
         }
     }
@@ -2126,30 +2136,30 @@ namespace hex::plugin::builtin {
         /* Place pattern... */
         ContentRegistry::Interface::addMenuItemSubMenu({ "hex.builtin.menu.edit", "hex.builtin.view.pattern_editor.menu.edit.place_pattern" }, ICON_VS_LIBRARY, 3000,
             [&, this] {
-                if (ImGui::BeginMenu("hex.builtin.view.pattern_editor.menu.edit.place_pattern.builtin"_lang)) {
-                    if (ImGui::BeginMenu("hex.builtin.view.pattern_editor.menu.edit.place_pattern.builtin.single"_lang)) {
+                if (menu::beginMenu("hex.builtin.view.pattern_editor.menu.edit.place_pattern.builtin"_lang)) {
+                    if (menu::beginMenu("hex.builtin.view.pattern_editor.menu.edit.place_pattern.builtin.single"_lang)) {
                         for (const auto &[type, size] : Types) {
-                            if (ImGui::MenuItem(type))
+                            if (menu::menuItem(type))
                                 appendVariable(type);
                         }
-                        ImGui::EndMenu();
+                        menu::endMenu();
                     }
 
-                    if (ImGui::BeginMenu("hex.builtin.view.pattern_editor.menu.edit.place_pattern.builtin.array"_lang)) {
+                    if (menu::beginMenu("hex.builtin.view.pattern_editor.menu.edit.place_pattern.builtin.array"_lang)) {
                         for (const auto &[type, size] : Types) {
-                            if (ImGui::MenuItem(type))
+                            if (menu::menuItem(type))
                                 appendArray(type, size);
                         }
-                        ImGui::EndMenu();
+                        menu::endMenu();
                     }
 
-                    ImGui::EndMenu();
+                    menu::endMenu();
                 }
 
                 const auto &types = m_editorRuntime->getInternals().parser->getTypes();
                 const bool hasPlaceableTypes = std::ranges::any_of(types, [](const auto &type) { return !type.second->isTemplateType(); });
 
-                if (ImGui::BeginMenu("hex.builtin.view.pattern_editor.menu.edit.place_pattern.custom"_lang, hasPlaceableTypes)) {
+                if (menu::beginMenu("hex.builtin.view.pattern_editor.menu.edit.place_pattern.custom"_lang, hasPlaceableTypes)) {
                     const auto &selection = ImHexApi::HexEditor::getSelection();
 
                     for (const auto &[typeName, type] : types) {
@@ -2166,7 +2176,7 @@ namespace hex::plugin::builtin {
                         });
                     }
 
-                    ImGui::EndMenu();
+                    menu::endMenu();
                 }
             }, [this] {
                 return ImHexApi::Provider::isValid() && ImHexApi::HexEditor::isSelectionValid() && m_runningParsers == 0;
@@ -2202,10 +2212,7 @@ namespace hex::plugin::builtin {
 
             if (TRY_LOCK(ContentRegistry::PatternLanguage::getRuntimeLock())) {
                 for (const auto &patternColor : runtime.getColorsAtAddress(address)) {
-                    if (color.has_value())
-                        color = ImAlphaBlendColors(*color, patternColor);
-                    else
-                        color = patternColor;
+                    color = blendColors(color, patternColor);
                 }
             }
 

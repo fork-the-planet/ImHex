@@ -101,6 +101,7 @@ namespace hex::plugin::builtin {
                     return false;
                 } else {
                     for (size_t n = 0; n < m_paths.size(); n++) {
+                        ImGui::PushID(n + 1);
                         const bool isSelected = (m_itemIndex == n);
                         if (ImGui::Selectable(wolv::util::toUTF8String(m_paths[n]).c_str(), isSelected)) {
                             m_itemIndex = n;
@@ -109,6 +110,8 @@ namespace hex::plugin::builtin {
                         if (isSelected) {
                             ImGui::SetItemDefaultFocus();
                         }
+
+                        ImGui::PopID();
                     }
                     ImGui::EndListBox();
                 }
@@ -146,6 +149,7 @@ namespace hex::plugin::builtin {
                 if (data.is_array()) {
                     std::vector<std::string> pathStrings = data;
 
+                    m_paths.clear();
                     for (const auto &pathString : pathStrings) {
                         m_paths.emplace_back(pathString);
                     }
@@ -749,7 +753,7 @@ namespace hex::plugin::builtin {
             ContentRegistry::Settings::add<Widgets::Checkbox>("hex.builtin.setting.general", "", "hex.builtin.setting.general.show_tips", false);
             ContentRegistry::Settings::add<Widgets::Checkbox>("hex.builtin.setting.general", "", "hex.builtin.setting.general.save_recent_providers", true);
             ContentRegistry::Settings::add<AutoBackupWidget>("hex.builtin.setting.general", "", "hex.builtin.setting.general.auto_backup_time");
-            ContentRegistry::Settings::add<Widgets::SliderDataSize>("hex.builtin.setting.general", "", "hex.builtin.setting.general.max_mem_file_size", 128_MiB, 0_bytes, 32_GiB)
+            ContentRegistry::Settings::add<Widgets::SliderDataSize>("hex.builtin.setting.general", "", "hex.builtin.setting.general.max_mem_file_size", 512_MiB, 0_bytes, 32_GiB, 1_MiB)
                 .setTooltip("hex.builtin.setting.general.max_mem_file_size.desc");
             ContentRegistry::Settings::add<Widgets::Checkbox>("hex.builtin.setting.general", "hex.builtin.setting.general.patterns", "hex.builtin.setting.general.auto_load_patterns", true);
             ContentRegistry::Settings::add<Widgets::Checkbox>("hex.builtin.setting.general", "hex.builtin.setting.general.patterns", "hex.builtin.setting.general.sync_pattern_source", false);
@@ -831,6 +835,10 @@ namespace hex::plugin::builtin {
 
             #if !defined(OS_WEB)
                 ContentRegistry::Settings::add<Widgets::Checkbox>("hex.builtin.setting.interface", "hex.builtin.setting.interface.window", "hex.builtin.setting.interface.native_window_decorations", !getDefaultBorderlessWindowMode()).requiresRestart();
+            #endif
+
+            #if defined (OS_MACOS)
+                ContentRegistry::Settings::add<Widgets::Checkbox>("hex.builtin.setting.interface", "hex.builtin.setting.interface.window", "hex.builtin.setting.interface.use_native_menu_bar", true);
             #endif
 
             ContentRegistry::Settings::add<Widgets::Checkbox>("hex.builtin.setting.interface", "hex.builtin.setting.interface.window", "hex.builtin.setting.interface.restore_window_pos", false);
