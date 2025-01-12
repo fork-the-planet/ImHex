@@ -18,11 +18,18 @@ jobs:
   win:
     runs-on: windows-2022
     name: 🪟 Windows MINGW64
+
     defaults:
       run:
         shell: msys2 {0}
+
     env:
       CCACHE_DIR:      "${{ github.workspace }}/.ccache"
+
+    permissions:
+      id-token: write
+      attestations: write
+
     steps:
     - name: 🧰 Checkout
       uses: actions/checkout@v4
@@ -86,6 +93,12 @@ jobs:
 
         echo "ImHex checks for the existence of this file to determine if it is running in portable mode. You should not delete this file" > $PWD/install/PORTABLE
 
+    - name: 🗝️ Generate build provenance attestations
+      uses: actions/attest-build-provenance@v2
+      with:
+        subject-path: |
+          imhex-*.msi
+
     - name: ⬆️ Upload Windows Installer
       uses: actions/upload-artifact@v4
       with:
@@ -122,12 +135,16 @@ jobs:
   win-plugin-template-test:
     runs-on: windows-2022
     name: 🧪 Plugin Template Test
+
     defaults:
       run:
         shell: msys2 {0}
+
     needs: win
+
     env:
       IMHEX_SDK_PATH: "${{ github.workspace }}/out/sdk"
+
     steps:
       - name: 🧰 Checkout ImHex
         uses: actions/checkout@v4
@@ -175,6 +192,10 @@ jobs:
   # MacOS build
   macos:
     runs-on: macos-13
+
+    permissions:
+      id-token: write
+      attestations: write
 
     strategy:
       fail-fast: false
@@ -316,6 +337,12 @@ jobs:
             sleep 10
         done
 
+    - name: 🗝️ Generate build provenance attestations
+      uses: actions/attest-build-provenance@v2
+      with:
+        subject-path: |
+          ./*.dmg
+
     - name: ⬆️ Upload DMG
       uses: actions/upload-artifact@v4
       with:
@@ -326,8 +353,10 @@ jobs:
   macos-arm64-build:
     runs-on: ubuntu-24.04
     name: 🍎 macOS 13 arm64
+
     outputs:
       IMHEX_VERSION: ${{ steps.build.outputs.IMHEX_VERSION }}
+
     steps:
     - name: 🧰 Checkout
       uses: actions/checkout@v4
@@ -371,8 +400,14 @@ jobs:
     runs-on: macos-13
     name: 🍎 macOS 13 arm64 Packaging
     needs: macos-arm64-build
+
     env:
       IMHEX_VERSION: ${{ needs.macos-arm64-build.outputs.IMHEX_VERSION }}
+
+    permissions:
+      id-token: write
+      attestations: write
+
     steps:
       - name: ⬇️ Download artifact
         uses: actions/download-artifact@v4
@@ -421,6 +456,12 @@ jobs:
               sleep 10
           done
 
+      - name: 🗝️ Generate build provenance attestations
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            ./*.dmg
+
       - name: ⬆️ Upload DMG
         uses: actions/upload-artifact@v4
         with:
@@ -443,6 +484,10 @@ jobs:
     container:
       image: "ubuntu:${{ matrix.release_num }}"
       options: --privileged
+
+    permissions:
+      id-token: write
+      attestations: write
 
     steps:
       - name: ⬇️ Install setup dependencies
@@ -501,8 +546,14 @@ jobs:
       - name: 📦 Bundle DEB
         run: |
           cp -r build/DEBIAN build/DebDir
-          dpkg-deb -Zgzip --build build/DebDir
+          dpkg-deb -Zzstd --build build/DebDir
           mv build/DebDir.deb imhex-${{ env.IMHEX_VERSION }}-Ubuntu-${{ matrix.release_num }}-x86_64.deb
+
+      - name: 🗝️ Generate build provenance attestations
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            ./*.deb
 
       - name: ⬆️ Upload DEB
         uses: actions/upload-artifact@v4
@@ -515,6 +566,11 @@ jobs:
   appimage:
     runs-on: ubuntu-24.04
     name: ⬇️ AppImage
+
+    permissions:
+      id-token: write
+      attestations: write
+
     steps:
       - name: 🧰 Checkout
         uses: actions/checkout@v4
@@ -539,6 +595,12 @@ jobs:
           docker buildx build . -f dist/appimage/Dockerfile --progress=plain --build-arg "BUILD_TYPE=$BUILD_TYPE" \
           --build-arg "GIT_COMMIT_HASH=$GITHUB_SHA" --build-arg "GIT_BRANCH=${GITHUB_REF##*/}" --output out
 
+      - name: 🗝️ Generate build provenance attestations
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            out/*.AppImage
+            out/*.AppImage.zsync
 
       - name: ⬆️ Upload AppImage
         uses: actions/upload-artifact@v4
@@ -561,6 +623,10 @@ jobs:
 
     container:
       image: archlinux:base-devel
+
+    permissions:
+      id-token: write
+      attestations: write
 
     steps:
       - name: ⬇️ Update all packages
@@ -645,6 +711,12 @@ jobs:
           rm *imhex-bin-debug* # rm debug package which is created for some reason
           mv *.pkg.tar.zst imhex-${{ env.IMHEX_VERSION }}-ArchLinux-x86_64.pkg.tar.zst
 
+      - name: 🗝️ Generate build provenance attestations
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            build/imhex-${{ env.IMHEX_VERSION }}-ArchLinux-x86_64.pkg.tar.zst
+
       - name: ⬆️ Upload imhex-archlinux.pkg.tar.zst
         uses: actions/upload-artifact@v4
         with:
@@ -682,6 +754,10 @@ jobs:
     container:
       image: "almalinux:9"
       options: --privileged --pid=host --security-opt apparmor=unconfined
+
+    permissions:
+      id-token: write
+      attestations: write
 
     steps:
       # This, together with the `--pid=host --security-opt apparmor=unconfined` docker options is required to allow
@@ -777,6 +853,12 @@ jobs:
         run: |
           mv $GITHUB_WORKSPACE/results_imhex/${{ env.IMHEX_VERSION }}/*/imhex-${{ env.IMHEX_VERSION }}-0.*.x86_64.rpm \
           $GITHUB_WORKSPACE/imhex-${{ env.IMHEX_VERSION }}-${{ matrix.name }}-${{ matrix.release_num }}-x86_64.rpm
+
+      - name: 🗝️ Generate build provenance attestations
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            imhex-${{ env.IMHEX_VERSION }}-${{ matrix.name }}-${{ matrix.release_num }}-x86_64.rpm
 
       - name: ⬆️ Upload RPM
         uses: actions/upload-artifact@v4
