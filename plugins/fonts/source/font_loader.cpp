@@ -263,23 +263,12 @@ namespace hex::fonts {
         }
 
         float getFontSize() {
-            float fontSize = ImHexApi::Fonts::DefaultFontSize;
+            const auto pixelPerfectFont = ContentRegistry::Settings::read<bool>("hex.builtin.setting.font", "hex.builtin.setting.font.pixel_perfect_default_font", true);
 
-            if (auto scaling = ImHexApi::System::getGlobalScale(); u32(scaling) * 10 == u32(scaling * 10))
-                fontSize *= scaling;
+            if (pixelPerfectFont)
+                return 13.0F * ImHexApi::System::getGlobalScale();
             else
-                fontSize *= scaling * 0.75F;
-
-            // Fall back to the default font if the global scale is 0
-            if (fontSize == 0.0F)
-                fontSize = ImHexApi::Fonts::DefaultFontSize;
-
-            // If a custom font is used, adjust the font size
-            if (!ImHexApi::Fonts::getCustomFontPath().empty()) {
-                fontSize = float(ContentRegistry::Settings::read<int>("hex.builtin.setting.font", "hex.builtin.setting.font.font_size", 13)) * ImHexApi::System::getGlobalScale();
-            }
-
-            return fontSize;
+                return float(ContentRegistry::Settings::read<int>("hex.builtin.setting.font", "hex.builtin.setting.font.font_size", 13)) * ImHexApi::System::getGlobalScale();
         }
 
     }
@@ -330,7 +319,7 @@ namespace hex::fonts {
             if (pixelPerfectFont)
                 defaultFont = fontAtlas.addDefaultFont();
             else
-                defaultFont = fontAtlas.addFontFromRomFs("fonts/JetBrainsMono.ttf", 14 * ImHexApi::System::getGlobalScale(), true, ImVec2());
+                defaultFont = fontAtlas.addFontFromRomFs("fonts/JetBrainsMono.ttf", fontSize, true, ImVec2());
 
             if (!fontAtlas.build()) {
                 log::fatal("Failed to load default font!");
