@@ -1,4 +1,5 @@
 #include "window.hpp"
+#include "hex/ui/banner.hpp"
 
 #include <hex.hpp>
 
@@ -553,6 +554,45 @@ namespace hex {
             });
         }
 
+        // Draw Banners
+        {
+            const bool onWelcomeScreen = !ImHexApi::Provider::isValid();
+
+            const auto windowPos = ImHexApi::System::getMainWindowPosition();
+            float startY = windowPos.y + ((ImGui::GetTextLineHeight() + (ImGui::GetStyle().FramePadding.y * 2.0F)) * (onWelcomeScreen ? 2 : 3));
+            const auto height = 30_scaled;
+
+            for (const auto &banner : impl::BannerBase::getOpenBanners() | std::views::take(5)) {
+                ImGui::PushID(banner.get());
+                {
+                    ImGui::SetNextWindowPos(ImVec2(windowPos.x + 1_scaled, startY));
+                    ImGui::SetNextWindowSize(ImVec2(ImHexApi::System::getMainWindowSize().x - 2_scaled, height));
+                    ImGui::PushStyleColor(ImGuiCol_WindowBg, banner->getColor().Value);
+                    if (ImGui::Begin("##Banner", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoFocusOnAppearing)) {
+                        if (ImGui::BeginChild("##Content", ImGui::GetContentRegionAvail() - ImVec2(20_scaled, 0))) {
+                            banner->draw();
+                        }
+                        ImGui::EndChild();
+
+                        ImGui::SameLine();
+
+                        if (ImGui::CloseButton(ImGui::GetID("BannerCloseButton"), ImGui::GetCursorScreenPos())) {
+                            banner->close();
+                        }
+                    }
+                    ImGui::End();
+                    ImGui::PopStyleColor();
+                }
+                ImGui::PopID();
+
+                startY += height;
+            }
+
+            std::erase_if(impl::BannerBase::getOpenBanners(), [](const auto &banner) {
+                return banner->shouldClose();
+            });
+        }
+
         // Run all deferred calls
         TaskManager::runDeferredCalls();
     }
@@ -895,17 +935,24 @@ namespace hex {
                 ) {
                     unlockFrameRate(window);
 
-                    if (!(mods & GLFW_MOD_NUM_LOCK)) {
-                        if (key == GLFW_KEY_KP_0) key = GLFW_KEY_INSERT;
-                        else if (key == GLFW_KEY_KP_1) key = GLFW_KEY_END;
-                        else if (key == GLFW_KEY_KP_2) key = GLFW_KEY_DOWN;
-                        else if (key == GLFW_KEY_KP_3) key = GLFW_KEY_PAGE_DOWN;
-                        else if (key == GLFW_KEY_KP_4) key = GLFW_KEY_LEFT;
-                        else if (key == GLFW_KEY_KP_6) key = GLFW_KEY_RIGHT;
-                        else if (key == GLFW_KEY_KP_7) key = GLFW_KEY_HOME;
-                        else if (key == GLFW_KEY_KP_8) key = GLFW_KEY_UP;
-                        else if (key == GLFW_KEY_KP_9) key = GLFW_KEY_PAGE_UP;
-                    }
+                    // Windows and Linux use the numpad for special actions when NumLock is disabled such as arrow keys or
+                    // the insert, home and end keys. GLFW however still returns the original numpad keys that are being pressed.
+                    // Translate them here to the desired keys.
+                    // macOS doesn't seem to have the concept of NumLock at all. They repurposed it as the "Clear" key so this
+                    // conversion makes no sense there.
+                    #if !defined(OS_MACOS)
+                        if (!(mods & GLFW_MOD_NUM_LOCK)) {
+                            if (key == GLFW_KEY_KP_0) key = GLFW_KEY_INSERT;
+                            else if (key == GLFW_KEY_KP_1) key = GLFW_KEY_END;
+                            else if (key == GLFW_KEY_KP_2) key = GLFW_KEY_DOWN;
+                            else if (key == GLFW_KEY_KP_3) key = GLFW_KEY_PAGE_DOWN;
+                            else if (key == GLFW_KEY_KP_4) key = GLFW_KEY_LEFT;
+                            else if (key == GLFW_KEY_KP_6) key = GLFW_KEY_RIGHT;
+                            else if (key == GLFW_KEY_KP_7) key = GLFW_KEY_HOME;
+                            else if (key == GLFW_KEY_KP_8) key = GLFW_KEY_UP;
+                            else if (key == GLFW_KEY_KP_9) key = GLFW_KEY_PAGE_UP;
+                        }
+                    #endif
 
                     auto win = static_cast<Window *>(glfwGetWindowUserPointer(window));
                     win->m_pressedKeys.push_back(key);
