@@ -571,36 +571,32 @@ namespace hex {
             #endif
 
             for (const auto &banner : impl::BannerBase::getOpenBanners() | std::views::take(5)) {
-                ImGui::PushID(banner.get());
-                {
-                    auto &style = ImGui::GetStyle();
-                    ImGui::SetNextWindowPos(ImVec2(windowPos.x + 1_scaled, startY));
-                    ImGui::SetNextWindowSize(ImVec2(ImHexApi::System::getMainWindowSize().x - 2_scaled, height));
-                    ImGui::PushStyleColor(ImGuiCol_WindowBg, banner->getColor().Value);
-                    auto prevShadowOffset = style.WindowShadowOffsetDist;
-                    auto prevShadowAngle = style.WindowShadowOffsetAngle;
-                    style.WindowShadowOffsetDist = 12_scaled;
-                    style.WindowShadowOffsetAngle =  0.5 * std::numbers::pi;
-                    ON_SCOPE_EXIT {
-                        style.WindowShadowOffsetDist = prevShadowOffset;
-                        style.WindowShadowOffsetAngle = prevShadowAngle;
-                    };
-                    if (ImGui::Begin("##Banner", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoFocusOnAppearing)) {
-                        if (ImGui::BeginChild("##Content", ImGui::GetContentRegionAvail() - ImVec2(20_scaled, 0))) {
-                            banner->draw();
-                        }
-                        ImGui::EndChild();
-
-                        ImGui::SameLine();
-
-                        if (ImGui::CloseButton(ImGui::GetID("BannerCloseButton"), ImGui::GetCursorScreenPos())) {
-                            banner->close();
-                        }
+                auto &style = ImGui::GetStyle();
+                ImGui::SetNextWindowPos(ImVec2(windowPos.x + 1_scaled, startY));
+                ImGui::SetNextWindowSize(ImVec2(ImHexApi::System::getMainWindowSize().x - 2_scaled, height));
+                ImGui::PushStyleColor(ImGuiCol_WindowBg, banner->getColor().Value);
+                auto prevShadowOffset = style.WindowShadowOffsetDist;
+                auto prevShadowAngle = style.WindowShadowOffsetAngle;
+                style.WindowShadowOffsetDist = 12_scaled;
+                style.WindowShadowOffsetAngle =  0.5 * std::numbers::pi;
+                ON_SCOPE_EXIT {
+                    style.WindowShadowOffsetDist = prevShadowOffset;
+                    style.WindowShadowOffsetAngle = prevShadowAngle;
+                };
+                if (ImGui::Begin(fmt::format("##Banner{}", static_cast<void*>(banner.get())).c_str(), nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoFocusOnAppearing)) {
+                    if (ImGui::BeginChild("##Content", ImGui::GetContentRegionAvail() - ImVec2(20_scaled, 0))) {
+                        banner->draw();
                     }
-                    ImGui::End();
-                    ImGui::PopStyleColor();
+                    ImGui::EndChild();
+
+                    ImGui::SameLine();
+
+                    if (ImGui::CloseButton(ImGui::GetID("BannerCloseButton"), ImGui::GetCursorScreenPos())) {
+                        banner->close();
+                    }
                 }
-                ImGui::PopID();
+                ImGui::End();
+                ImGui::PopStyleColor();
 
                 startY += height;
             }
@@ -874,23 +870,40 @@ namespace hex {
             glfwSetWindowSize(m_window, width, height);
         }
 
+        static const auto unlockFrameRate = [](GLFWwindow *, auto ...) {
+            auto win = static_cast<Window *>(glfwGetWindowUserPointer(ImHexApi::System::getMainWindowHandle()));
+            if (win == nullptr)
+                return;
+
+            win->m_unlockFrameRate = true;
+        };
+
+        static const auto isMainWindow = [](GLFWwindow *window) {
+            return window == ImHexApi::System::getMainWindowHandle();
+        };
+
         // Register window move callback
         glfwSetWindowPosCallback(m_window, [](GLFWwindow *window, int x, int y) {
-            ImHexApi::System::impl::setMainWindowPosition(x, y);
+            unlockFrameRate(window);
 
-            auto win = static_cast<Window *>(glfwGetWindowUserPointer(window));
-            win->m_unlockFrameRate = true;
-            win->fullFrame();
+            if (!isMainWindow(window)) return;
+
+            ImHexApi::System::impl::setMainWindowPosition(x, y);
         });
 
         // Register window resize callback
         glfwSetWindowSizeCallback(m_window, [](GLFWwindow *window, [[maybe_unused]] int width, [[maybe_unused]] int height) {
-            auto win = static_cast<Window *>(glfwGetWindowUserPointer(window));
-            win->m_unlockFrameRate = true;
+            unlockFrameRate(window);
+
+            if (!isMainWindow(window)) return;
 
             #if !defined(OS_WINDOWS)
-                if (!glfwGetWindowAttrib(window, GLFW_ICONIFIED))
+                if (!glfwGetWindowAttrib(window, GLFW_ICONIFIED)) {
+                    int x = 0, y = 0;
+                    glfwGetWindowPos(window, &x, &y);
+                    ImHexApi::System::impl::setMainWindowPosition(x, y);
                     ImHexApi::System::impl::setMainWindowSize(width, height);
+                }
             #endif
 
             #if defined(OS_MACOS)
@@ -899,14 +912,10 @@ namespace hex {
                     ImGui::GetIO().MousePos = ImVec2();
                 }
             #elif defined(OS_WEB)
+                auto win = static_cast<Window *>(glfwGetWindowUserPointer(ImHexApi::System::getMainWindowHandle()));
                 win->fullFrame();
             #endif
         });
-
-        static const auto unlockFrameRate = [](GLFWwindow *window, auto ...) {
-            auto win = static_cast<Window *>(glfwGetWindowUserPointer(window));
-            win->m_unlockFrameRate = true;
-        };
 
         glfwSetCursorPosCallback(m_window, unlockFrameRate);
         glfwSetMouseButtonCallback(m_window, unlockFrameRate);
@@ -971,14 +980,18 @@ namespace hex {
                         }
                     #endif
 
-                    auto win = static_cast<Window *>(glfwGetWindowUserPointer(window));
-                    win->m_pressedKeys.push_back(key);
+                    auto win = static_cast<Window *>(glfwGetWindowUserPointer(ImHexApi::System::getMainWindowHandle()));
+                    win->m_pressedKeys.insert(key);
                 }
             }
         });
 
         // Register window close callback
         glfwSetWindowCloseCallback(m_window, [](GLFWwindow *window) {
+            unlockFrameRate(window);
+
+            if (!isMainWindow(window)) return;
+
             EventWindowClosing::post(window);
         });
 
@@ -1139,6 +1152,8 @@ namespace hex {
         #else
             ImGui_ImplOpenGL3_Init("#version 130");
         #endif
+
+        ImGui_ImplGlfw_SetCallbacksChainForAllWindows(true);
 
         for (const auto &plugin : PluginManager::getPlugins())
             plugin.setImGuiContext(ImGui::GetCurrentContext());

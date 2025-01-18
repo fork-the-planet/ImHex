@@ -1,3 +1,17 @@
+# Some libraries we use set the BUILD_SHARED_LIBS variable to ON, which causes CMake to
+# display a warning about options being set using set() instead of option().
+# Explicitly set the policy to NEW to suppress the warning.
+set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
+
+set(CMAKE_POLICY_DEFAULT_CMP0063 NEW)
+
+if (POLICY CMP0177)
+    set(CMAKE_POLICY_DEFAULT_CMP0177 OLD)
+    cmake_policy(SET CMP0177 OLD)
+endif()
+
+set(CMAKE_WARN_DEPRECATED OFF CACHE BOOL "Disable deprecated warnings" FORCE)
+
 include(FetchContent)
 
 if(IMHEX_STRIP_RELEASE)
@@ -370,15 +384,6 @@ macro(configureCMake)
             message(WARNING "LTO is not supported: ${output_error}")
         endif ()
     endif ()
-
-    # Some libraries we use set the BUILD_SHARED_LIBS variable to ON, which causes CMake to
-    # display a warning about options being set using set() instead of option().
-    # Explicitly set the policy to NEW to suppress the warning.
-    set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
-
-    set(CMAKE_POLICY_DEFAULT_CMP0063 NEW)
-
-    set(CMAKE_WARN_DEPRECATED OFF CACHE BOOL "Disable deprecated warnings" FORCE)
 endmacro()
 
 function(configureProject)
@@ -785,65 +790,6 @@ function(enableUnityBuild TARGET)
     endif ()
 endfunction()
 
-function(generatePDBs)
-    if (NOT IMHEX_GENERATE_PDBS)
-        return()
-    endif ()
-
-    if (NOT WIN32 OR CMAKE_BUILD_TYPE STREQUAL "Debug")
-        return()
-    endif ()
-
-    include(FetchContent)
-    FetchContent_Declare(
-            cv2pdb
-            URL "https://github.com/rainers/cv2pdb/releases/download/v0.52/cv2pdb-0.52.zip"
-            DOWNLOAD_EXTRACT_TIMESTAMP ON
-    )
-    FetchContent_Populate(cv2pdb)
-
-    set(PDBS_TO_GENERATE main main-forwarder libimhex ${PLUGINS} libpl)
-    foreach (PDB ${PDBS_TO_GENERATE})
-        if (PDB STREQUAL "main")
-            set(GENERATED_PDB imhex)
-        elseif (PDB STREQUAL "main-forwarder")
-            set(GENERATED_PDB imhex-gui)
-        elseif (PDB STREQUAL "libimhex")
-            set(GENERATED_PDB libimhex)
-        elseif (PDB STREQUAL "libpl")
-            set(GENERATED_PDB libpl)
-        else ()
-            set(GENERATED_PDB plugins/${PDB})
-        endif ()
-
-        if (NOT IMHEX_REPLACE_DWARF_WITH_PDB)
-            set(PDB_OUTPUT_PATH ${CMAKE_BINARY_DIR}/${GENERATED_PDB})
-        else ()
-            set(PDB_OUTPUT_PATH)
-        endif()
-
-        add_custom_target(${PDB}_pdb DEPENDS ${CMAKE_BINARY_DIR}/${GENERATED_PDB}.pdb)
-        add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/${GENERATED_PDB}.pdb
-                WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-                COMMAND
-                (
-                    ${CMAKE_COMMAND} -E remove -f ${CMAKE_BINARY_DIR}/${GENERATED_PDB}.pdb &&
-                    ${cv2pdb_SOURCE_DIR}/cv2pdb64.exe $<TARGET_FILE:${PDB}> ${PDB_OUTPUT_PATH} &&
-                    ${CMAKE_COMMAND} -E remove -f ${CMAKE_BINARY_DIR}/${GENERATED_PDB}
-                ) || (exit 0)
-                COMMAND_EXPAND_LISTS)
-
-        if (IMHEX_REPLACE_DWARF_WITH_PDB)
-            install(CODE "file(COPY_FILE ${CMAKE_BINARY_DIR}/${PDB}.pdb ${CMAKE_BINARY_DIR}/${GENERATED_PDB}.pdb RESULT copy_result)")
-        endif ()
-
-        install(FILES ${CMAKE_BINARY_DIR}/${GENERATED_PDB}.pdb DESTINATION ".")
-
-        add_dependencies(imhex_all ${PDB}_pdb)
-    endforeach ()
-
-endfunction()
-
 function(generateSDKDirectory)
     if (WIN32)
         set(SDK_PATH "./sdk")
@@ -872,6 +818,12 @@ function(generateSDKDirectory)
     install(FILES ${CMAKE_SOURCE_DIR}/cmake/build_helpers.cmake DESTINATION "${SDK_PATH}/cmake")
     install(DIRECTORY ${CMAKE_SOURCE_DIR}/cmake/sdk/ DESTINATION "${SDK_PATH}")
     install(TARGETS libimhex ARCHIVE DESTINATION "${SDK_PATH}/lib")
+
+    install(DIRECTORY ${CMAKE_SOURCE_DIR}/plugins/ui DESTINATION "${SDK_PATH}/lib" PATTERN "**/source/*" EXCLUDE)
+    install(TARGETS ui ARCHIVE DESTINATION "${SDK_PATH}/lib")
+
+    install(DIRECTORY ${CMAKE_SOURCE_DIR}/plugins/fonts DESTINATION "${SDK_PATH}/lib" PATTERN "**/source/*" EXCLUDE)
+    install(TARGETS fonts ARCHIVE DESTINATION "${SDK_PATH}/lib")
 endfunction()
 
 function(addIncludesFromLibrary target library)
