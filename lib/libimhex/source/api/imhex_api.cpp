@@ -993,11 +993,6 @@ namespace hex {
                 return *s_fonts;
             }
 
-            static AutoReset<std::fs::path> s_customFontPath;
-            void setCustomFontPath(const std::fs::path &path) {
-                s_customFontPath = path;
-            }
-
             static float s_fontSize = DefaultFontSize;
             void setFontSize(float size) {
                 s_fontSize = size;
@@ -1015,6 +1010,10 @@ namespace hex {
                 s_italicFont = italic;
             }
 
+            static AutoReset<std::map<UnlocalizedString, ImFont*>> s_fontDefinitions;
+            std::map<UnlocalizedString, ImFont*>& getFontDefinitions() {
+                return *s_fontDefinitions;
+            }
 
         }
 
@@ -1079,16 +1078,20 @@ namespace hex {
             });
         }
 
-        const std::fs::path& getCustomFontPath() {
-            return impl::s_customFontPath;
-        }
-
         float getFontSize() {
             return impl::s_fontSize;
         }
 
         ImFontAtlas* getFontAtlas() {
             return impl::s_fontAtlas;
+        }
+
+        void registerFont(const UnlocalizedString &fontName) {
+            (*impl::s_fontDefinitions)[fontName] = nullptr;
+        }
+
+        ImFont* getFont(const UnlocalizedString &fontName) {
+            return (*impl::s_fontDefinitions)[fontName];
         }
 
         ImFont* Bold() {

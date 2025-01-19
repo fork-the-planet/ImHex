@@ -19,6 +19,7 @@
 #include <nlohmann/json.hpp>
 
 #include <utility>
+#include <romfs/romfs.hpp>
 
 namespace hex::plugin::builtin {
 
@@ -650,87 +651,6 @@ namespace hex::plugin::builtin {
             i32 m_currIndex = 0;
         };
 
-        class FontFilePicker : public ContentRegistry::Settings::Widgets::FilePicker {
-        public:
-            bool draw(const std::string &name) override {
-                bool changed = false;
-
-                const auto &fonts = hex::getFonts();
-                const bool pixelPerfectFont = ContentRegistry::Settings::read<bool>("hex.builtin.setting.font", "hex.builtin.setting.font.pixel_perfect_default_font", true);
-
-                bool customFont = false;
-                std::string pathPreview = "";
-                if (m_path.empty() && pixelPerfectFont) {
-                    pathPreview = "Pixel-Perfect Default Font (Proggy Clean)";
-                } else if (m_path.empty() && !pixelPerfectFont) {
-                    pathPreview = "Smooth Default Font (JetbrainsMono)";
-                } else if (fonts.contains(m_path)) {
-                    pathPreview = fonts.at(m_path);
-                } else {
-                    pathPreview = wolv::util::toUTF8String(m_path.filename());
-                    customFont = true;
-                }
-
-                if (ImGui::BeginCombo(name.c_str(), pathPreview.c_str())) {
-
-                    if (ImGui::Selectable("Pixel-Perfect Default Font (Proggy Clean)", m_path.empty() && pixelPerfectFont)) {
-                        m_path.clear();
-                        changed = true;
-                        ContentRegistry::Settings::write<bool>("hex.builtin.setting.font", "hex.builtin.setting.font.pixel_perfect_default_font", true);
-                    }
-
-                    if (ImGui::Selectable("Smooth Default Font (JetbrainsMono)", m_path.empty() && !pixelPerfectFont)) {
-                        m_path.clear();
-                        changed = true;
-                        ContentRegistry::Settings::write<bool>("hex.builtin.setting.font", "hex.builtin.setting.font.pixel_perfect_default_font", false);
-                    }
-
-                    if (ImGui::Selectable("Custom Font", customFont)) {
-                        changed = fs::openFileBrowser(fs::DialogMode::Open, { { "TTF Font", "ttf" }, { "OTF Font", "otf" } }, [this](const std::fs::path &path) {
-                            m_path = path;
-                        });
-                    }
-
-                    for (const auto &[path, fontName] : fonts) {
-                        if (ImGui::Selectable(fontName.c_str(), m_path == path)) {
-                            m_path = path;
-                            changed = true;
-                        }
-                    }
-
-                    ImGui::EndCombo();
-                }
-
-                return changed;
-            }
-        };
-
-        class SliderPoints : public ContentRegistry::Settings::Widgets::SliderFloat {
-        public:
-            SliderPoints(float defaultValue, float min, float max) : SliderFloat(defaultValue, min, max) { }
-            bool draw(const std::string &name) override {
-                float value = pixelsToPoints(m_value);
-                float min = pixelsToPoints(m_min);
-                float max = pixelsToPoints(m_max);
-
-                auto changed = ImGui::SliderFloat(name.c_str(), &value, min, max, "%.0f pt");
-
-                m_value = pointsToPixels(value);
-
-                return changed;
-            }
-
-        private:
-            static float pixelsToPoints(float pixels) {
-                return pixels * (72_scaled / 96.0F);
-            }
-
-            static float pointsToPixels(float points) {
-                return points / (72_scaled / 96.0F);
-            }
-        };
-
-
         bool getDefaultBorderlessWindowMode() {
             bool result;
 
@@ -900,61 +820,12 @@ namespace hex::plugin::builtin {
 
             ContentRegistry::Settings::add<Widgets::Checkbox>("hex.builtin.setting.hex_editor", "", "hex.builtin.setting.hex_editor.pattern_parent_highlighting", true);
 
-            std::vector<std::string> pasteBehaviourNames = { "Ask me next time", "Paste everything", "Paste over selection" };
+            std::vector<std::string> pasteBehaviourNames = { "hex.builtin.setting.hex_editor.paste_behaviour.none", "hex.builtin.setting.hex_editor.paste_behaviour.everything", "hex.builtin.setting.hex_editor.paste_behaviour.selection" };
             std::vector<nlohmann::json> pasteBehaviourValues = { "none", "everything", "selection" };
             ContentRegistry::Settings::add<Widgets::DropDown>("hex.builtin.setting.hex_editor", "", "hex.builtin.setting.hex_editor.paste_behaviour",
                                                               pasteBehaviourNames,
                                                               pasteBehaviourValues,
                                                               "none");
-        }
-
-        /* Fonts */
-        {
-            const auto scaleWarningHandler = [](auto&) {
-                s_showScalingWarning = ImHexApi::Fonts::getCustomFontPath().empty() &&
-                    ContentRegistry::Settings::read<bool>("hex.builtin.setting.font", "hex.builtin.setting.font.pixel_perfect_default_font", true);
-            };
-            ContentRegistry::Settings::onChange("hex.builtin.setting.font", "hex.builtin.setting.font.pixel_perfect_default_font", scaleWarningHandler);
-
-            ContentRegistry::Settings::add<Widgets::Checkbox>("hex.builtin.setting.font", "hex.builtin.setting.font.glyphs", "hex.builtin.setting.font.load_all_unicode_chars", false)
-                .requiresRestart();
-
-            auto customFontEnabledSetting = ContentRegistry::Settings::add<Widgets::Checkbox>("hex.builtin.setting.font", "hex.builtin.setting.font.custom_font", "hex.builtin.setting.font.custom_font_enable", false).requiresRestart();
-
-            const auto customFontsEnabled = [customFontEnabledSetting] {
-                auto &customFontsEnabled = static_cast<Widgets::Checkbox &>(customFontEnabledSetting.getWidget());
-
-                return customFontsEnabled.isChecked();
-            };
-
-            auto customFontPathSetting = ContentRegistry::Settings::add<FontFilePicker>("hex.builtin.setting.font", "hex.builtin.setting.font.custom_font", "hex.builtin.setting.font.font_path")
-                    .requiresRestart()
-                    .setChangedCallback(scaleWarningHandler)
-                    .setEnabledCallback(customFontsEnabled);
-
-            const auto customFontSettingsEnabled = [customFontEnabledSetting, customFontPathSetting] {
-                auto &customFontsEnabled = static_cast<Widgets::Checkbox &>(customFontEnabledSetting.getWidget());
-                const bool pixelPerfectFont = ContentRegistry::Settings::read<bool>("hex.builtin.setting.font", "hex.builtin.setting.font.pixel_perfect_default_font", true);
-
-                return customFontsEnabled.isChecked() && !pixelPerfectFont;
-            };
-
-            ContentRegistry::Settings::add<Widgets::Label>("hex.builtin.setting.font", "hex.builtin.setting.font.custom_font", "hex.builtin.setting.font.custom_font_info")
-                    .setEnabledCallback(customFontsEnabled);
-
-
-            ContentRegistry::Settings::add<SliderPoints>("hex.builtin.setting.font", "hex.builtin.setting.font.custom_font", "hex.builtin.setting.font.font_size", 16, 2, 100)
-                    .requiresRestart()
-                    .setEnabledCallback(customFontSettingsEnabled);
-            ContentRegistry::Settings::add<Widgets::Checkbox>("hex.builtin.setting.font", "hex.builtin.setting.font.custom_font", "hex.builtin.setting.font.font_bold", false)
-                    .requiresRestart()
-                    .setEnabledCallback(customFontSettingsEnabled);
-            ContentRegistry::Settings::add<Widgets::Checkbox>("hex.builtin.setting.font", "hex.builtin.setting.font.custom_font", "hex.builtin.setting.font.font_italic", false)
-                    .requiresRestart()
-                    .setEnabledCallback(customFontSettingsEnabled);
-            ContentRegistry::Settings::add<Widgets::Checkbox>("hex.builtin.setting.font", "hex.builtin.setting.font.custom_font", "hex.builtin.setting.font.font_antialias", true)
-                    .requiresRestart()
-                    .setEnabledCallback(customFontSettingsEnabled);
         }
 
         /* Folders */
