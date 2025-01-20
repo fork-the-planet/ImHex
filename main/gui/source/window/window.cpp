@@ -1,5 +1,4 @@
 #include "window.hpp"
-#include "hex/ui/banner.hpp"
 
 #include <hex.hpp>
 
@@ -12,12 +11,12 @@
 #include <hex/api/tutorial_manager.hpp>
 
 #include <hex/helpers/utils.hpp>
-#include <hex/helpers/fs.hpp>
 #include <hex/helpers/logger.hpp>
 #include <hex/helpers/default_paths.hpp>
 
 #include <hex/ui/view.hpp>
 #include <hex/ui/popup.hpp>
+#include <hex/ui/banner.hpp>
 
 #include <chrono>
 #include <csignal>
@@ -309,8 +308,7 @@ namespace hex {
                 ImGui_ImplOpenGL3_CreateFontsTexture();
             }
 
-            // Make the first font in the list the default UI font
-            currentFont = fontDefinitions.begin()->second->ContainerAtlas;
+            currentFont = ImHexApi::Fonts::getFont("hex.fonts.font.default")->ContainerAtlas;
         }
 
         // Start new ImGui Frame
@@ -667,16 +665,13 @@ namespace hex {
             view->trackViewOpenState();
 
             if (view->getWindowOpenState()) {
-                bool hasWindow = window != nullptr;
-                bool focused   = false;
-
                 // Get the currently focused view
-                if (hasWindow && (window->Flags & ImGuiWindowFlags_Popup) != ImGuiWindowFlags_Popup) {
+                if (window != nullptr && (window->Flags & ImGuiWindowFlags_Popup) != ImGuiWindowFlags_Popup) {
                     auto windowName = View::toWindowName(name);
                     ImGui::Begin(windowName.c_str());
 
                     // Detect if the window is focused
-                    focused = ImGui::IsWindowFocused(ImGuiFocusedFlags_ChildWindows | ImGuiFocusedFlags_NoPopupHierarchy);
+                    const bool focused = ImGui::IsWindowFocused(ImGuiFocusedFlags_ChildWindows | ImGuiFocusedFlags_NoPopupHierarchy);
 
                     // Dock the window if it's not already docked
                     if (view->didWindowJustOpen() && !ImGui::IsWindowDocked()) {
@@ -906,6 +901,11 @@ namespace hex {
             if (!isMainWindow(window)) return;
 
             ImHexApi::System::impl::setMainWindowPosition(x, y);
+
+            int width = 0, height = 0;
+            glfwGetWindowSize(window, &width, &height);
+            ImHexApi::System::impl::setMainWindowPosition(x, y);
+            ImHexApi::System::impl::setMainWindowSize(width, height);
         });
 
         // Register window resize callback
@@ -937,10 +937,14 @@ namespace hex {
         glfwSetCursorPosCallback(m_window, unlockFrameRate);
         glfwSetMouseButtonCallback(m_window, unlockFrameRate);
         glfwSetScrollCallback(m_window, unlockFrameRate);
-        glfwSetWindowFocusCallback(m_window, unlockFrameRate);
 
-        glfwSetWindowFocusCallback(m_window, [](GLFWwindow *, int focused) {
+        glfwSetWindowFocusCallback(m_window, [](GLFWwindow *window, int focused) {
+            unlockFrameRate(window);
             EventWindowFocused::post(focused == GLFW_TRUE);
+        });
+
+        glfwSetWindowMaximizeCallback(m_window, [](GLFWwindow *window, int) {
+            glfwShowWindow(window);
         });
 
         // Register key press callback
@@ -1091,6 +1095,8 @@ namespace hex {
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable | ImGuiConfigFlags_NavEnableKeyboard;
         io.ConfigWindowsMoveFromTitleBarOnly = true;
         io.FontGlobalScale = 1.0F;
+
+        ImGui::GetCurrentContext()->FontAtlasOwnedByContext = false;
 
         if (glfwGetPrimaryMonitor() != nullptr) {
             if (ImHexApi::System::isMutliWindowModeEnabled())

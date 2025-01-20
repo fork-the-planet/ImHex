@@ -10,6 +10,8 @@
 #include <imgui.h>
 #include <imgui_internal.h>
 
+#include <GLFW/glfw3.h>
+
 #if defined(OS_WINDOWS)
     #include <windows.h>
     #include <shellapi.h>
@@ -854,6 +856,13 @@ namespace hex {
             return b;
         else
             return ImAlphaBlendColors(a.value(), b.value());
+    }
+
+    extern "C" void macOSCloseButtonPressed() {
+        auto windowHandle = ImHexApi::System::getMainWindowHandle();
+
+        glfwHideWindow(windowHandle);
+        glfwIconifyWindow(windowHandle);
     }
 
 }

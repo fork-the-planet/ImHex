@@ -90,7 +90,9 @@ namespace hex::plugin::builtin {
                     }
 
                     // Draw all settings of that category
+                    u32 index = 0;
                     for (auto &subCategory : category.subCategories) {
+                        ON_SCOPE_EXIT { index += 1; };
 
                         // Skip empty subcategories
                         if (subCategory.entries.empty())
@@ -132,7 +134,9 @@ namespace hex::plugin::builtin {
 
                         }
                         ImGuiExt::EndSubWindow();
-                        ImGui::NewLine();
+
+                        if (index != i64(category.subCategories.size()) - 1)
+                            ImGui::NewLine();
                     }
                 }
                 ImGui::EndChild();
