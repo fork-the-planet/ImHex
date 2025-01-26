@@ -1,6 +1,7 @@
 #include <hex/plugin.hpp>
 
 #include <hex/api/content_registry.hpp>
+#include <hex/api/events/events_gui.hpp>
 #include <hex/helpers/logger.hpp>
 
 #include <romfs/romfs.hpp>
@@ -64,12 +65,12 @@ namespace hex::fonts {
                         return;
                     }
 
-                    loadFont(widget, name, &font, ImHexApi::System::getGlobalScale());
+                    loadFont(widget, name, &font, ImHexApi::System::getGlobalScale() * ImHexApi::System::getBackingScaleFactor());
                 });
 
-            loadFont(widget.getWidget(), name, &font, ImHexApi::System::getGlobalScale());
+            loadFont(widget.getWidget(), name, &font, ImHexApi::System::getGlobalScale() * ImHexApi::System::getBackingScaleFactor());
             EventDPIChanged::subscribe(font, [&widget, name, &font](float, float newScaling) {
-                loadFont(widget.getWidget(), name, &font, newScaling);
+                loadFont(widget.getWidget(), name, &font, ImHexApi::System::getGlobalScale() * newScaling);
             });
         }
 

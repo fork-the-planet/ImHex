@@ -9,6 +9,10 @@
 #include <hex/api/shortcut_manager.hpp>
 #include <hex/api/workspace_manager.hpp>
 #include <hex/api/tutorial_manager.hpp>
+#include <hex/api/events/requests_lifecycle.hpp>
+#include <hex/api/events/events_lifecycle.hpp>
+#include <hex/api/events/requests_gui.hpp>
+#include <hex/api/events/events_gui.hpp>
 
 #include <hex/helpers/utils.hpp>
 #include <hex/helpers/logger.hpp>
@@ -28,7 +32,6 @@
 #include <imgui_internal.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
-#include <imgui_impl_opengl3_loader.h>
 #include <hex/ui/imgui_imhex_extensions.h>
 #include <implot.h>
 #include <implot_internal.h>
@@ -810,8 +813,6 @@ namespace hex {
         // NOTE: This needs to be done before a new frame is started, otherwise ImGui won't handle docking correctly
         LayoutManager::process();
         WorkspaceManager::process();
-
-        ImGui::GetIO().FontGlobalScale = 1.0F / ImHexApi::System::getBackingScaleFactor();
     }
 
     void Window::drawImGui() {

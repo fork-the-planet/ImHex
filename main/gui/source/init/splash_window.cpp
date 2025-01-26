@@ -2,7 +2,7 @@
 #include "init/splash_window.hpp"
 
 #include <hex/api/imhex_api.hpp>
-#include <hex/api/event_manager.hpp>
+#include <hex/api/events/requests_lifecycle.hpp>
 
 #include <hex/helpers/utils.hpp>
 #include <hex/helpers/fmt.hpp>
@@ -482,7 +482,7 @@ namespace hex::init {
             if (meanScale <= 0.0F)
                 meanScale = 1.0F;
 
-            meanScale /= hex::ImHexApi::System::getBackingScaleFactor();                
+            meanScale /= hex::ImHexApi::System::getBackingScaleFactor();
 
             ImHexApi::System::impl::setGlobalScale(meanScale);
             ImHexApi::System::impl::setNativeScale(meanScale);

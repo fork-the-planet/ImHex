@@ -1,16 +1,18 @@
-#include <hex/api/content_registry.hpp>
-#include <hex/api/theme_manager.hpp>
-
 #include "window.hpp"
-
 
 #if defined(OS_WINDOWS)
 
     #include "messaging.hpp"
 
+    #include <hex/api/content_registry.hpp>
+    #include <hex/api/theme_manager.hpp>
+
     #include <hex/helpers/utils.hpp>
     #include <hex/helpers/logger.hpp>
     #include <hex/helpers/default_paths.hpp>
+
+    #include <hex/api/events/events_gui.hpp>
+    #include <hex/api/events/requests_gui.hpp>
 
     #include <imgui.h>
     #include <imgui_internal.h>
