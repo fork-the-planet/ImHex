@@ -6,6 +6,7 @@ on:
       - 'master'
       - 'releases/**'
       - 'tests/**'
+      - 'feature/**'
   pull_request:
   workflow_dispatch:
 
@@ -237,7 +238,7 @@ jobs:
           ninja
 
   # MacOS build
-  macos:
+  macos-x86:
     runs-on: macos-13
 
     permissions:
@@ -370,19 +371,13 @@ jobs:
 
     - name: 📦 Create DMG
       run: |
-        set -x
-        mkdir bundle
-        mv build/install/ImHex.app bundle
-        cd bundle
-        ln -s /Applications Applications
-        cd ..
-        for i in $(seq 1 10); do
-            if hdiutil create -volname "ImHex" -srcfolder bundle -ov -format UDZO imhex-${{ env.IMHEX_VERSION }}-macOS${{ matrix.suffix }}-x86_64.dmg; then
-                echo "Created dmg after ${i} attempts"
-                break
-            fi
-            sleep 10
-        done
+        brew install imagemagick
+        git clone https://github.com/sindresorhus/create-dmg
+        cd create-dmg
+        npm i && npm -g i
+        cd ../build/install
+        create-dmg ImHex.app || true
+        mv *.dmg ../../imhex-${{ env.IMHEX_VERSION }}-macOS${{ matrix.suffix }}-x86_64.dmg
 
     - name: 🗝️ Generate build provenance attestations
       uses: actions/attest-build-provenance@v2
@@ -398,7 +393,7 @@ jobs:
         name: macOS DMG${{ matrix.suffix }} x86_64
         path: ./*.dmg
 
-  macos-arm64-build:
+  macos-arm64:
     runs-on: ubuntu-24.04
     name: 🍎 macOS 13 arm64
 
@@ -447,7 +442,7 @@ jobs:
   macos-arm64-package:
     runs-on: macos-13
     name: 🍎 macOS 13 arm64 Packaging
-    needs: macos-arm64-build
+    needs: macos-arm64
 
     env:
       IMHEX_VERSION: ${{ needs.macos-arm64-build.outputs.IMHEX_VERSION }}
@@ -490,19 +485,13 @@ jobs:
 
       - name: 📦 Create DMG
         run: |
-          set -x
-          mkdir bundle
-          mv out/ImHex.app bundle
-          cd bundle
-          ln -s /Applications Applications
-          cd ..
-          for i in $(seq 1 10); do
-              if hdiutil create -volname "ImHex" -srcfolder bundle -ov -format UDZO imhex-${{ env.IMHEX_VERSION }}-macOS-arm64.dmg; then
-                  echo "Created dmg after ${i} attempts"
-                  break
-              fi
-              sleep 10
-          done
+          brew install imagemagick
+          git clone https://github.com/sindresorhus/create-dmg
+          cd create-dmg
+          npm i && npm -g i
+          cd ../out
+          create-dmg ImHex.app || true
+          mv *.dmg ../imhex-${{ env.IMHEX_VERSION }}-macOS${{ matrix.suffix }}-arm64.dmg
 
       - name: 🗝️ Generate build provenance attestations
         uses: actions/attest-build-provenance@v2

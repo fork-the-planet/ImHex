@@ -55,7 +55,7 @@ namespace hex::fonts {
         // If there's no custom font set, or it failed to load, fall back to the default font
         if (!defaultFont.has_value()) {
             if (pixelPerfectFont) {
-                fontSize = std::max(1.0F, std::floor(ImHexApi::System::getGlobalScale() * 13.0F));
+                fontSize = std::max(1.0F, std::floor(ImHexApi::System::getGlobalScale() * ImHexApi::System::getBackingScaleFactor() * 13.0F));
                 defaultFont = fontAtlas->addDefaultFont();
             } else
                 defaultFont = fontAtlas->addFontFromRomFs("fonts/JetBrainsMono.ttf", fontSize, true, ImVec2());
@@ -88,7 +88,10 @@ namespace hex::fonts {
                 const ImVec2 offset = { font.offset.x, font.offset.y - (defaultFont->getDescent() - fontAtlas->calculateFontDescend(font, fontSize)) };
 
                 // Load the font
-                fontAtlas->addFontFromMemory(font.fontData, font.defaultSize.value_or(fontSize), !font.defaultSize.has_value(), offset, glyphRanges.back());
+                float size = fontSize;
+                if (font.defaultSize.has_value())
+                    size = font.defaultSize.value() * ImHexApi::System::getBackingScaleFactor();
+                fontAtlas->addFontFromMemory(font.fontData, size, !font.defaultSize.has_value(), offset, glyphRanges.back());
             }
         }
 
