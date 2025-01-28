@@ -15,6 +15,7 @@
 
 #include <fonts/vscode_icons.hpp>
 #include <hex/api/tutorial_manager.hpp>
+#include <hex/helpers/auto_reset.hpp>
 #include <romfs/romfs.hpp>
 #include <wolv/utils/guards.hpp>
 
@@ -27,7 +28,7 @@ namespace hex::plugin::builtin {
 
         std::string s_windowTitle, s_windowTitleFull;
         u32 s_searchBarPosition = 0;
-        ImGuiExt::Texture s_logoTexture;
+        AutoReset<ImGuiExt::Texture> s_logoTexture;
         bool s_showSearchBar = true;
         bool s_displayShortcutHighlights = true;
         bool s_useNativeMenuBar = false;
@@ -385,7 +386,7 @@ namespace hex::plugin::builtin {
                 if (ImHexApi::System::isBorderlessWindowModeEnabled()) {
                     #if defined(OS_WINDOWS)
                         ImGui::SetCursorPosX(5_scaled);
-                        ImGui::Image(s_logoTexture, s_logoTexture.getSize() * u32(1_scaled));
+                        ImGui::Image(*s_logoTexture, s_logoTexture->getSize() * u32(1_scaled));
                         ImGui::SetCursorPosX(5_scaled);
                         ImGui::InvisibleButton("##logo", ImVec2(menuBarHeight, menuBarHeight));
                         if (ImGui::IsItemHovered() && ImGui::IsAnyMouseDown())
