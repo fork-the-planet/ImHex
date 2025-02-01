@@ -62,7 +62,11 @@ macro(add_imhex_plugin)
     )
 
     # Set rpath of plugin libraries to the plugins folder
-    if (APPLE)
+    if (WIN32)
+        if (IMHEX_PLUGIN_LIBRARY_PLUGIN)
+            set_target_properties(${IMHEX_PLUGIN_NAME} PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
+        endif()
+    elseif (APPLE)
         set_target_properties(${IMHEX_PLUGIN_NAME} PROPERTIES BUILD_RPATH "@executable_path/../Frameworks;@executable_path/plugins")
     endif()
 

@@ -73,6 +73,7 @@ macro(detectOS)
         set(CMAKE_INSTALL_LIBDIR ".")
         set(PLUGINS_INSTALL_LOCATION "plugins")
         add_compile_definitions(WIN32_LEAN_AND_MEAN)
+        add_compile_definitions(NOMINMAX)
         add_compile_definitions(UNICODE)
     elseif (APPLE)
         add_compile_definitions(OS_MACOS)
@@ -439,6 +440,8 @@ function(verifyCompiler)
         message(FATAL_ERROR "ImHex requires GCC 12.0.0 or newer. Please use the latest GCC version.")
     elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS "17.0.0")
         message(FATAL_ERROR "ImHex requires Clang 17.0.0 or newer. Please use the latest Clang version.")
+    elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+        
     elseif (NOT (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang"))
         message(FATAL_ERROR "ImHex can only be compiled with GCC or Clang. ${CMAKE_CXX_COMPILER_ID} is not supported.")
     endif()
@@ -567,7 +570,7 @@ endmacro()
 macro(setupCompilerFlags target)
     # IMHEX_COMMON_FLAGS: flags common for C, C++, Objective C, etc.. compilers
 
-    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
         # Define strict compilation flags
         if (IMHEX_STRICT_WARNINGS)
             set(IMHEX_COMMON_FLAGS "${IMHEX_COMMON_FLAGS} -Wall -Wextra -Wpedantic -Werror")
@@ -581,6 +584,8 @@ macro(setupCompilerFlags target)
 
         # Disable some warnings
         set(IMHEX_C_CXX_FLAGS "-Wno-array-bounds -Wno-deprecated-declarations -Wno-unknown-pragmas")
+    elseif (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+        set(IMHEX_CXX_FLAGS "/EHsc")
     endif()
 
     if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
@@ -727,7 +732,7 @@ macro(addBundledLibraries)
     set(LIBPL_BUILD_CLI_AS_EXECUTABLE OFF CACHE BOOL "" FORCE)
     set(LIBPL_ENABLE_PRECOMPILED_HEADERS ${IMHEX_ENABLE_PRECOMPILED_HEADERS} CACHE BOOL "" FORCE)
 
-    if (WIN32)
+    if (WIN32 AND NOT MSVC)
         set(LIBPL_SHARED_LIBRARY ON CACHE BOOL "" FORCE)
     else()
         set(LIBPL_SHARED_LIBRARY OFF CACHE BOOL "" FORCE)
