@@ -626,7 +626,8 @@ namespace hex {
 
         // Draw Banners
         {
-            const bool onWelcomeScreen = !ImHexApi::Provider::isValid();
+            const auto currentProvider = ImHexApi::Provider::get();
+            const bool onWelcomeScreen = currentProvider == nullptr || !currentProvider->isAvailable();
 
             const auto windowPos = ImHexApi::System::getMainWindowPosition();
             float startY = windowPos.y + ImGui::GetTextLineHeight() + ((ImGui::GetTextLineHeight() + (ImGui::GetStyle().FramePadding.y * 2.0F)) * (onWelcomeScreen ? 1 : 2));
@@ -643,6 +644,7 @@ namespace hex {
                 auto &style = ImGui::GetStyle();
                 ImGui::SetNextWindowPos(ImVec2(windowPos.x + 1_scaled, startY));
                 ImGui::SetNextWindowSize(ImVec2(ImHexApi::System::getMainWindowSize().x - 2_scaled, height));
+                ImGui::SetNextWindowViewport(viewport->ID);
                 ImGui::PushStyleColor(ImGuiCol_WindowBg, banner->getColor().Value);
                 auto prevShadowOffset = style.WindowShadowOffsetDist;
                 auto prevShadowAngle = style.WindowShadowOffsetAngle;
@@ -726,6 +728,7 @@ namespace hex {
 
                     // Detect if the window is focused
                     const bool focused = ImGui::IsWindowFocused(ImGuiFocusedFlags_ChildWindows | ImGuiFocusedFlags_NoPopupHierarchy);
+                    view->setFocused(focused);
 
                     // Dock the window if it's not already docked
                     if (view->didWindowJustOpen() && !ImGui::IsWindowDocked()) {
