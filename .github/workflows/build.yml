@@ -140,7 +140,7 @@ jobs:
 
     - name: 🗝️ Generate build provenance attestations
       uses: actions/attest-build-provenance@v2
-      if: ${{ github.event.repository.fork == false }}
+      if: ${{ github.event.repository.fork == false && github.event_name != 'pull_request' }}
       with:
         subject-path: |
           imhex-*.msi
@@ -458,7 +458,7 @@ jobs:
 
     - name: 🗝️ Generate build provenance attestations
       uses: actions/attest-build-provenance@v2
-      if: ${{ github.event.repository.fork == false }}
+      if: ${{ github.event.repository.fork == false && github.event_name != 'pull_request' }}
       with:
         subject-path: |
           ./*.dmg
@@ -500,6 +500,7 @@ jobs:
       run: |
         echo "IMHEX_VERSION=`cat VERSION`" >> $GITHUB_OUTPUT
         docker buildx build . -f dist/macOS/arm64.Dockerfile --progress=plain --build-arg 'JOBS=4' --build-arg "BUILD_TYPE=$(BUILD_TYPE)" --build-context imhex=$(pwd) --output out
+        cp resources/dist/macos/Entitlements.plist out/Entitlements.plist
 
     - name: ⬆️ Upload artifacts
       uses: actions/upload-artifact@v4
@@ -546,7 +547,7 @@ jobs:
           cd out
           mv imhex.app ImHex.app
           codesign --remove-signature ImHex.app
-          codesign --force --deep --sign - ImHex.app
+          codesign --force --deep --entitlements Entitlements.plist --sign - ImHex.app
 
       - name: 📁 Fix permissions
         run: |
@@ -577,7 +578,7 @@ jobs:
 
       - name: 🗝️ Generate build provenance attestations
         uses: actions/attest-build-provenance@v2
-        if: ${{ github.event.repository.fork == false }}
+        if: ${{ github.event.repository.fork == false && github.event_name != 'pull_request' }}
         with:
           subject-path: |
             ./*.dmg
@@ -671,7 +672,7 @@ jobs:
 
       - name: 🗝️ Generate build provenance attestations
         uses: actions/attest-build-provenance@v2
-        if: ${{ github.event.repository.fork == false }}
+        if: ${{ github.event.repository.fork == false && github.event_name != 'pull_request' }}
         with:
           subject-path: |
             ./*.deb
@@ -715,8 +716,8 @@ jobs:
         uses: actions/cache@v4
         with:
           path: cache
-          key: appimage-ccache-${{ github.run_id }}
-          restore-keys: appimage-cache
+          key: appimage-ccache-${{ matrix.architecture }}-${{ github.run_id }}
+          restore-keys: appimage-ccache-${{ matrix.architecture }}
 
       - name: 🐳 Inject /cache into docker
         uses: reproducible-containers/buildkit-cache-dance@v2
@@ -733,7 +734,7 @@ jobs:
 
       - name: 🗝️ Generate build provenance attestations
         uses: actions/attest-build-provenance@v2
-        if: ${{ github.event.repository.fork == false }}
+        if: ${{ github.event.repository.fork == false && github.event_name != 'pull_request' }}
         with:
           subject-path: |
             out/*.AppImage
@@ -850,7 +851,7 @@ jobs:
 
       - name: 🗝️ Generate build provenance attestations
         uses: actions/attest-build-provenance@v2
-        if: ${{ github.event.repository.fork == false }}
+        if: ${{ github.event.repository.fork == false && github.event_name != 'pull_request' }}
         with:
           subject-path: |
             build/imhex-${{ env.IMHEX_VERSION }}-ArchLinux-x86_64.pkg.tar.zst
@@ -926,7 +927,7 @@ jobs:
           path: /var/cache/dnf
           key: ${{ matrix.mock_release }}-dnf-${{ github.run_id }}
           restore-keys: |
-            ${{ matrix.mock_release }}-dnf-
+            ${{ matrix.mock_release }}-dnf
 
       - name: ⬇️ Update all packages and install dependencies
         run: |
@@ -994,7 +995,7 @@ jobs:
 
       - name: 🗝️ Generate build provenance attestations
         uses: actions/attest-build-provenance@v2
-        if: ${{ github.event.repository.fork == false }}
+        if: ${{ github.event.repository.fork == false && github.event_name != 'pull_request' }}
         with:
           subject-path: |
             imhex-${{ env.IMHEX_VERSION }}-${{ matrix.name }}-${{ matrix.release_num }}-x86_64.rpm
