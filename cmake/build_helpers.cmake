@@ -381,6 +381,10 @@ endfunction()
 macro(configureCMake)
     message(STATUS "Configuring ImHex v${IMHEX_VERSION}")
 
+    if (DEFINED CMAKE_TOOLCHAIN_FILE)
+        message(STATUS "Using toolchain file: \"${CMAKE_TOOLCHAIN_FILE}\"")
+    endif()
+
     set(CMAKE_POSITION_INDEPENDENT_CODE ON CACHE BOOL "Enable position independent code for all targets" FORCE)
 
     # Configure use of recommended build tools
@@ -635,6 +639,7 @@ macro(setupCompilerFlags target)
         addCommonFlag("/wd4267" ${target}) # 'var': conversion from 'size_t' to 'type', possible loss of data
         addCommonFlag("/wd4305" ${target}) # truncation from 'double' to 'float'
         addCommonFlag("/wd4996" ${target}) # 'function': was declared deprecated
+        addCommonFlag("/wd5244" ${target}) # 'include' in the purview of module 'module' appears erroneous
 
         if (IMHEX_STRICT_WARNINGS)
             addCommonFlag("/WX" ${target})
@@ -660,6 +665,7 @@ macro(setupCompilerFlags target)
         addCCXXFlag("-Wno-array-bounds" ${target})
         addCCXXFlag("-Wno-deprecated-declarations" ${target})
         addCCXXFlag("-Wno-unknown-pragmas" ${target})
+        addCXXFlag("-Wno-include-angled-in-module-purview" ${target})
 
         # Enable hardening flags
         addCommonFlag("-U_FORTIFY_SOURCE" ${target})
