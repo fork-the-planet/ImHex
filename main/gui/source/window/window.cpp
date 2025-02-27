@@ -303,7 +303,7 @@ namespace hex {
 
                     {
                         std::unique_lock lock(m_sleepMutex);
-                        m_sleepCondVar.wait_for(lock, std::chrono::microseconds(100));
+                        m_sleepCondVar.wait(lock);
                         if (m_sleepFlag.exchange(false))
                             break;
                     }
@@ -1233,6 +1233,7 @@ namespace hex {
                     m_wakeupCondVar.wait_for(lock, requestedFrameTime, [&] {
                         return m_wakeupFlag || stopToken.stop_requested();
                     });
+                    m_wakeupFlag = false;
                 }
 
                 endTime = std::chrono::steady_clock::now();
