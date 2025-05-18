@@ -292,11 +292,14 @@ public:
     ImVec2 Underwaves( ImVec2 pos, uint32_t nChars, ImColor color= ImGui::GetStyleColorVec4(ImGuiCol_Text), const ImVec2 &size_arg= ImVec2(0, 0));
 
 	void Render(const char* aTitle, const ImVec2& aSize = ImVec2(), bool aBorder = false);
-	void SetText(const std::string& aText);
+	void SetText(const std::string& aText, bool aUndo = false);
     void JumpToLine(int line=-1);
     void JumpToCoords(const Coordinates &coords);
     void SetLongestLineLength(size_t line) {
         mLongestLineLength = line;
+    }
+    size_t GetLongestLineLength() const {
+        return mLongestLineLength;
     }
 	std::string GetText() const;
     bool isEmpty() const {
@@ -335,7 +338,7 @@ public:
         mNewTopMargin = newMargin;
         mTopMarginChanged = true;
     }
-    void setFocusAtCoords(const Coordinates &coords) {
+    void SetFocusAtCoords(const Coordinates &coords) {
         mFocusAtCoords = coords;
         mUpdateFocus = true;
     }
@@ -383,6 +386,7 @@ public:
 
 	void InsertText(const std::string& aValue);
 	void InsertText(const char* aValue);
+    void AppendLine(const std::string &aValue);
 
 	void MoveUp(int aAmount = 1, bool aSelect = false);
 	void MoveDown(int aAmount = 1, bool aSelect = false);
@@ -547,7 +551,7 @@ private:
 	Coordinates SanitizeCoordinates(const Coordinates& aValue) const;
 	void Advance(Coordinates& aCoordinates) const;
 	void DeleteRange(const Coordinates& aStart, const Coordinates& aEnd);
-	int InsertTextAt(Coordinates& aWhere, const char* aValue);
+	int InsertTextAt(Coordinates& aWhere, const std::string &aValue);
 	void AddUndo(UndoRecord& aValue);
 	Coordinates ScreenPosToCoordinates(const ImVec2& aPosition) const;
 	Coordinates FindWordStart(const Coordinates& aFrom) const;
